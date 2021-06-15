@@ -23,8 +23,6 @@ Feldaufnahmen <- read_sf("Feldaufnahmen_Fanel.gpkg")%>%
 
 
 #_________________________________________________________________________________
-
-
 #Trainingsample erstellen
 trainingsample <- wildschwein_BE%>%filter(TierName %in% c("Ueli", "Caroline"), 
     DatetimeUTC > ymd_hms("2016-04-01 00:00:00"), DatetimeUTC < ymd_hms("2016-06-01 00:00:00"))
@@ -34,6 +32,8 @@ trainingsample <- trainingsample %>%
   mutate(
     stepMean = rowMeans(                       
       cbind(                                   
+        sqrt((lag(E,6)-E)^2+(lag(E,6)-E)^2),         
+        sqrt((lag(E,5)-E)^2+(lag(E,5)-E)^2),         
         sqrt((lag(E,4)-E)^2+(lag(E,4)-E)^2),         
         sqrt((lag(E,3)-E)^2+(lag(E,3)-E)^2),   
         sqrt((lag(E,2)-E)^2+(lag(E,2)-E)^2),   
@@ -41,13 +41,15 @@ trainingsample <- trainingsample %>%
         sqrt((E-lead(E,1))^2+(E-lead(E,1))^2),  
         sqrt((E-lead(E,2))^2+(E-lead(E,2))^2),
         sqrt((E-lead(E,3))^2+(E-lead(E,3))^2),  
-        sqrt((E-lead(E,4))^2+(E-lead(E,4))^2)  
+        sqrt((E-lead(E,4))^2+(E-lead(E,4))^2),  
+        sqrt((E-lead(E,5))^2+(E-lead(E,5))^2),  
+        sqrt((E-lead(E,6))^2+(E-lead(E,6))^2)  
       )                                        
     )
   )
 
 
-# Remove “moving points”
+# Remove moving points
 trainingsample_stops <- trainingsample %>% 
   ungroup() %>%
   mutate(static = stepMean < 5)
@@ -63,15 +65,9 @@ trainingsample_stops <- trainingsample_stops %>%
   mutate(segment_id = rle_id(static))
 trainingsample_stops
 
+#remove "moving" segments
 trainingsample_filter <- trainingsample_stops %>%
   filter(static)
-
-trainingsample_filter%>%
-  ggplot(aes(E, N))  +
-  geom_path() +
-  geom_point(aes(colour=segment_id)) +
-  coord_fixed() +
-  theme(legend.position = "bottom")
 
 trainingsample_filter%>%
   ggplot()  +
@@ -79,28 +75,67 @@ trainingsample_filter%>%
   coord_fixed() +
   theme(legend.position = "bottom")
 
-
-
 #_________________________________________________
 #define segementcenter 
+trainingsample_center<- aggregate(trainingsample_filter[, c(2,5:6)], list(trainingsample_filter$segment_id), mean)
+ggplot() +
+  geom_point(data = trainingsample_center, aes(E, N))
 
-trainingsample_center<- aggregate(trainingsample_filter[, c(5:6)], list(trainingsample_filter$segment_id), mean)
+#join for TierID/TierName
 trainingsample_center_join<-st_join(trainingsample_filter, trainingsample_center, by=segment_id)%>%
   st_as_sf(coords = c("E.y", "N.y"), crs = 2056, remove = FALSE)
 
 ggplot() +
-  geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName))
+  geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName.x))
 
 ggplot() +
   geom_sf(data=Feldaufnahmen, aes(fill = Frucht))+
-  geom_point(data = trainingsample_center, aes(E, N))
+  geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName.x))
   
 
 #__________________________________________
 #Feldaufnahmen joinen
-wildschwein_join <-st_join(trainingsample_center_join,Feldaufnahmen)
+wildschwein <- trainingsample_center_join[,-(8:11),drop=FALSE]
+wildschwein <- wildschwein[,-(9:10),drop=FALSE]
+wildschwein <- wildschwein[,-(5:6),drop=FALSE]
+
+wildschwein_join <-st_join(wildschwein,Feldaufnahmen, suffix = c("E.y", "N.y"))
+
+library(naniar)
+library(stringr)
+Feldaufnahmen_dicht<-Feldaufnahmen%>%replace_with_na(replace = list(Frucht = c("Acker", "Ackerbohnen", "Baumschule", "Blumenbeet", "Bohnen", "Brokkoli", "Erbsen", "Fenchel", "Flachs", "Flugplatz", "Gemuese", "Gewaechshaus", "Karotten", "Kartoffeln", "Kohl", "Kohlrabi", "Kuerbis", "Lauch", "Lupinen", "Mangold", "Obstplantage", "Rhabarber", "Rueben", "Salat", "Sellerie", "Spargel", "Spinat", "Zucchetti", "Zwiebeln")))%>%
+  mutate(Frucht = str_replace(Frucht, "Gerste|Hafer|Roggen|Weizen", "Getreide"))%>%
+  mutate(Frucht = str_replace(Frucht, "Wiese|Weide", "Wiese/Weide"))%>%
+  mutate(Frucht = str_replace(Frucht, "Buntbrache|Brache", "(Bunt)-Brache"))
+
+ggplot() +
+  geom_sf(data=Feldaufnahmen_dicht, aes(fill = Frucht))+
+  geom_point(data = wildschwein_join, aes(E.y, N.y, color = TierName.x))
+
+ggplot() +
+  geom_sf(data=Feldaufnahmen, aes())+
+  geom_point(data = wildschwein_join, aes(E.y, N.y, color = Frucht))
+
+#Anteil an Flächen
+wildschwein_join$Anteil <- 1
+wildschwein_anteil<- aggregate(wildschwein_join[, c(12)], list(wildschwein_join$Frucht), sum)
+
+boxplot(Anteil~Group.1, data = wildschwein_anteil)
+
+pct <- round(wildschwein_anteil$Anteil/sum(wildschwein_anteil$Anteil)*100)
+lbls <- paste(wildschwein_anteil$Group.1, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(wildschwein_anteil$Anteil,labels = lbls, col=rainbow(length(lbls)),
+    main="Aufteilung der Schlafplätze nach Vegetationstyp")
 
 
+
+
+
+
+
+
+#______________________________________________
 #Kernel Density
 df<-trainingsample
 find_hull <- function(df) df[chull(df$E, df$N), ]
@@ -117,10 +152,8 @@ ggplot(df, aes(E,  N, colour = TierName, fill = TierName)) +
   stat_bag(prop = 0.5, alpha = 0.5) + # enclose 50% of points
   stat_bag(prop = 0.05, alpha = 0.9) # enclose 5% of points
 
-
 ggplot(trainingsample, aes(x=E, y=N))+
   geom_density_2d()
-
 
 ggplot(trainingsample, aes(x=E, y=N) ) +
   geom_hex(bins = 30, alpha = 0.9) +
