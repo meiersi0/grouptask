@@ -99,7 +99,7 @@ wildschwein <- trainingsample_center_join[,-(8:11),drop=FALSE]
 wildschwein <- wildschwein[,-(9:10),drop=FALSE]
 wildschwein <- wildschwein[,-(5:6),drop=FALSE]
 
-wildschwein_join <-st_join(wildschwein,Feldaufnahmen, suffix = c("E.y", "N.y"))
+wildschwein <-st_join(wildschwein,Feldaufnahmen, suffix = c("E.y", "N.y"))
 
 library(naniar)
 library(stringr)
@@ -110,24 +110,38 @@ Feldaufnahmen_dicht<-Feldaufnahmen%>%replace_with_na(replace = list(Frucht = c("
 
 ggplot() +
   geom_sf(data=Feldaufnahmen_dicht, aes(fill = Frucht))+
-  geom_point(data = wildschwein_join, aes(E.y, N.y, color = TierName.x))
+  geom_point(data = wildschwein, aes(E.y, N.y, color = TierName.x))
 
 ggplot() +
   geom_sf(data=Feldaufnahmen, aes())+
-  geom_point(data = wildschwein_join, aes(E.y, N.y, color = Frucht))
+  geom_point(data = wildschwein, aes(E.y, N.y, color = Frucht))
 
 #Anteil an Flächen
 #Aufteilen nach Jahreszeit
 wildschwein$DatetimeUTC<-as.POSIXct(as.character(wildschwein$DatetimeUTC), format = "%Y-%m-%d %H:%M:%OS",tz = "UTC")
 wildschwein$Monat <- month(wildschwein$DatetimeUTC)
-wildschwein$Jahreszeit[wildschwein$Monat == c(3,4,5)] <- "Frühling"
-wildschwein$Jahreszeit[wildschwein$Monat == c(6,7,8)] <- "Sommer"
-wildschwein$Jahreszeit[wildschwein$Monat == c(9,10,11)] <- "Herbst"
-wildschwein$Jahreszeit[wildschwein$Monat == c(12,1,2)] <- "Winter"
+wildschwein$Jahreszeit[wildschwein$Monat == "3"] <- "Frühling"
+wildschwein$Jahreszeit[wildschwein$Monat == "4"] <- "Frühling"
+wildschwein$Jahreszeit[wildschwein$Monat == "5"] <- "Frühling"
+wildschwein$Jahreszeit[wildschwein$Monat == "6"] <- "Sommer"
+wildschwein$Jahreszeit[wildschwein$Monat == "7"] <- "Sommer"
+wildschwein$Jahreszeit[wildschwein$Monat == "8"] <- "Sommer"
+wildschwein$Jahreszeit[wildschwein$Monat == "9"] <- "Herbst"
+wildschwein$Jahreszeit[wildschwein$Monat == "10"] <- "Herbst"
+wildschwein$Jahreszeit[wildschwein$Monat == "11"] <- "Herbst"
+wildschwein$Jahreszeit[wildschwein$Monat == "12"] <- "Winter"
+wildschwein$Jahreszeit[wildschwein$Monat == "1"] <- "Winter"
+wildschwein$Jahreszeit[wildschwein$Monat == "2"] <- "Winter"
 
 
-wildschwein_join$Anteil <- 1
-wildschwein_anteil<- aggregate(wildschwein_join[, c(12)], list(wildschwein_join$Frucht), sum)
+wildschwein$Anteil <- 1
+wildschwein_anteil<- aggregate(wildschwein[, c(14)], list(wildschwein$Frucht), sum)
+wildschwein_anteil_jahreszeit<- aggregate(wildschwein[, c(14)], list(wildschwein$Frucht, wildschwein$Jahreszeit), sum)
+
+wildschwein_anteil_fruehling<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Frühling")
+wildschwein_anteil_sommer<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Sommer")
+wildschwein_anteil_herbst<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Herbst")
+wildschwein_anteil_winter<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Winter")
 
 boxplot(Anteil~Group.1, data = wildschwein_anteil)
 
@@ -137,6 +151,29 @@ lbls <- paste(lbls,"%",sep="") # ad % to labels
 pie(wildschwein_anteil$Anteil,labels = lbls, col=rainbow(length(lbls)),
     main="Aufteilung der Schlafplätze nach Vegetationstyp")
 
+pct <- round(wildschwein_anteil_fruehling$Anteil/sum(wildschwein_anteil_fruehling$Anteil)*100)
+lbls <- paste(wildschwein_anteil_fruehling$Group.1, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(wildschwein_anteil_fruehling$Anteil,labels = lbls, col=rainbow(length(lbls)),
+    main="Aufteilung der Schlafplätze nach Vegetationstyp")
+
+pct <- round(wildschwein_anteil_sommer$Anteil/sum(wildschwein_anteil_sommer$Anteil)*100)
+lbls <- paste(wildschwein_anteil_sommer$Group.1, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(wildschwein_anteil_sommer$Anteil,labels = lbls, col=rainbow(length(lbls)),
+    main="Aufteilung der Schlafplätze nach Vegetationstyp")
+
+pct <- round(wildschwein_anteil_herbst$Anteil/sum(wildschwein_anteil_herbst$Anteil)*100)
+lbls <- paste(wildschwein_anteil_herbst$Group.1, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(wildschwein_anteil_herbst$Anteil,labels = lbls, col=rainbow(length(lbls)),
+    main="Aufteilung der Schlafplätze nach Vegetationstyp")
+
+pct <- round(wildschwein_anteil_winter$Anteil/sum(wildschwein_anteil_winter$Anteil)*100)
+lbls <- paste(wildschwein_anteil_winter$Group.1, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(wildschwein_anteil_winter$Anteil,labels = lbls, col=rainbow(length(lbls)),
+    main="Aufteilung der Schlafplätze nach Vegetationstyp")
 
 
 
