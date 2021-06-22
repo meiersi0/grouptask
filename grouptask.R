@@ -117,6 +117,15 @@ ggplot() +
   geom_point(data = wildschwein_join, aes(E.y, N.y, color = Frucht))
 
 #Anteil an Flächen
+#Aufteilen nach Jahreszeit
+wildschwein$DatetimeUTC<-as.POSIXct(as.character(wildschwein$DatetimeUTC), format = "%Y-%m-%d %H:%M:%OS",tz = "UTC")
+wildschwein$Monat <- month(wildschwein$DatetimeUTC)
+wildschwein$Jahreszeit[wildschwein$Monat == c(3,4,5)] <- "Frühling"
+wildschwein$Jahreszeit[wildschwein$Monat == c(6,7,8)] <- "Sommer"
+wildschwein$Jahreszeit[wildschwein$Monat == c(9,10,11)] <- "Herbst"
+wildschwein$Jahreszeit[wildschwein$Monat == c(12,1,2)] <- "Winter"
+
+
 wildschwein_join$Anteil <- 1
 wildschwein_anteil<- aggregate(wildschwein_join[, c(12)], list(wildschwein_join$Frucht), sum)
 
