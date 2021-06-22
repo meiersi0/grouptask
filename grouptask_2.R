@@ -24,8 +24,11 @@ Feldaufnahmen <- read_sf("Feldaufnahmen_Fanel.gpkg")%>%
 
 #_________________________________________________________________________________
 #Trainingsample erstellen
-trainingsample <- wildschwein_BE
-#trainingsample <- wildschwein_BE%>%filter(TierName %in% c("Ueli", "Caroline"), DatetimeUTC > ymd_hms("2016-04-01 00:00:00"), DatetimeUTC < ymd_hms("2016-06-01 00:00:00"))
+
+
+#trainingsample <- wildschwein_BE
+trainingsample <- wildschwein_BE%>%filter(TierName %in% c("Ueli", "Caroline"), 
+    DatetimeUTC > ymd_hms("2016-04-01 00:00:00"), DatetimeUTC < ymd_hms("2016-06-01 00:00:00"))
 
 #Eucl.Dist moving window
 trainingsample <- trainingsample %>%
@@ -77,7 +80,8 @@ trainingsample_filter%>%
 
 #_________________________________________________
 #define segementcenter 
-trainingsample_center<- aggregate(trainingsample_filter[, c(2,5:6)], list(trainingsample_filter$segment_id), mean)
+trainingsample_center<-aggregate(trainingsample_filter[, c(1,5:6)], list(trainingsample_filter$segment_id), mean)
+
 ggplot() +
   geom_point(data = trainingsample_center, aes(E, N))
 
@@ -86,54 +90,25 @@ trainingsample_center_join<-st_join(trainingsample_filter, trainingsample_center
   st_as_sf(coords = c("E.y", "N.y"), crs = 2056, remove = FALSE)
 
 ggplot() +
-  geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName.x))
+  geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName))
 
 ggplot() +
   geom_sf(data=Feldaufnahmen, aes(fill = Frucht))+
-  geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName.x))
-
+  geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName))
+  
 
 #__________________________________________
 #Feldaufnahmen joinen
+
 wildschwein <- trainingsample_center_join[,-(8:11),drop=FALSE]
 wildschwein <- wildschwein[,-(9:10),drop=FALSE]
 wildschwein <- wildschwein[,-(5:6),drop=FALSE]
 
 wildschwein_join <-st_join(wildschwein,Feldaufnahmen, suffix = c("E.y", "N.y"))
 
-library(naniar)
-library(stringr)
-Feldaufnahmen_dicht<-Feldaufnahmen%>%replace_with_na(replace = list(Frucht = c("Acker", "Ackerbohnen", "Baumschule", "Blumenbeet", "Bohnen", "Brokkoli", "Erbsen", "Fenchel", "Flachs", "Flugplatz", "Gemuese", "Gewaechshaus", "Karotten", "Kartoffeln", "Kohl", "Kohlrabi", "Kuerbis", "Lauch", "Lupinen", "Mangold", "Obstplantage", "Rhabarber", "Rueben", "Salat", "Sellerie", "Spargel", "Spinat", "Zucchetti", "Zwiebeln")))%>%
-  mutate(Frucht = str_replace(Frucht, "Gerste|Hafer|Roggen|Weizen", "Getreide"))%>%
-  mutate(Frucht = str_replace(Frucht, "Wiese|Weide", "Wiese/Weide"))%>%
-  mutate(Frucht = str_replace(Frucht, "Buntbrache|Brache", "(Bunt)-Brache"))
-
-ggplot() +
-  geom_sf(data=Feldaufnahmen_dicht, aes(fill = Frucht))+
-  geom_point(data = wildschwein_join, aes(E.y, N.y, color = TierName.x))
-
 ggplot() +
   geom_sf(data=Feldaufnahmen, aes())+
   geom_point(data = wildschwein_join, aes(E.y, N.y, color = Frucht))
-
-#Anteil an Flächen
-wildschwein_join$Anteil <- 1
-wildschwein_anteil<- aggregate(wildschwein_join[, c(12)], list(wildschwein_join$Frucht), sum)
-
-boxplot(Anteil~Group.1, data = wildschwein_anteil)
-
-pct <- round(wildschwein_anteil$Anteil/sum(wildschwein_anteil$Anteil)*100)
-lbls <- paste(wildschwein_anteil$Group.1, pct) # add percents to labels
-lbls <- paste(lbls,"%",sep="") # ad % to labels
-pie(wildschwein_anteil$Anteil,labels = lbls, col=rainbow(length(lbls)),
-    main="Aufteilung der Schlafplätze nach Vegetationstyp")
-
-
-
-
-
-
-
 
 
 
@@ -164,4 +139,10 @@ ggplot(trainingsample, aes(x=E, y=N) ) +
   geom_hex(bins = 30, alpha = 0.9) +
   scale_fill_continuous(low = "white", high = "red")+
   theme_bw()
+
+
+
+
+
+
 
