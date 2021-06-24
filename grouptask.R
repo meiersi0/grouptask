@@ -31,9 +31,9 @@ ggplot() +
 
 #_________________________________________________________________________________
 #Trainingsample erstellen. Danach mit dem ganzen Datensatz rechnen
-trainingsample <- wildschwein_BE%>%filter(TierName %in% c("Ueli", "Caroline"), DatetimeUTC > ymd_hms("2015-04-01 00:00:00"), DatetimeUTC < ymd_hms("2016-06-01 00:00:00"))
+#trainingsample <- wildschwein_BE%>%filter(TierName %in% c("Ueli", "Caroline"), DatetimeUTC > ymd_hms("2015-04-01 00:00:00"), DatetimeUTC < ymd_hms("2016-06-01 00:00:00"))
 #trainingsample <- wildschwein_BE%>%filter(DatetimeUTC > ymd_hms("2015-01-01 00:00:00"), DatetimeUTC < ymd_hms("2016-01-01 00:00:00"))
-#trainingsample <- wildschwein_BE
+trainingsample <- wildschwein_BE
 
 #Eucl.Dist moving window
 trainingsample <- trainingsample %>%
@@ -78,9 +78,6 @@ trainingsample_stops$Dauer <- 1
 trainingsample_stops_dauer<-aggregate(trainingsample_stops[, c(12)], list(trainingsample_stops$segment_id), sum)
 names(trainingsample_stops_dauer)[1] <- "segment_id"
 trainingsample_stops<-left_join(trainingsample_stops, trainingsample_stops_dauer, by="segment_id")
-
-#trainingsample_stops%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
-
 
 #remove "moving" segments
 trainingsample_filter <- trainingsample_stops %>%
@@ -134,20 +131,19 @@ Feldaufnahmen_korr<-Feldaufnahmen%>%
   mutate(Frucht = str_replace(Frucht, "Raps", "zus. Raps"))
 
 
-
-
 wildschwein<-wildschwein%>%st_as_sf(coords = c("E.y", "N.y"), crs = 2056, remove = FALSE)
 
 wildschwein <-st_join(wildschwein,Feldaufnahmen_korr, suffix = c("E.y", "N.y"))
 wildschwein <-wildschwein%>% drop_na(Frucht)
 
+
 ggplot() +
   geom_sf(data=Feldaufnahmen_korr, aes(fill = Frucht))+
-  geom_point(data = wildschwein, aes(E.y, N.y, color = TierName, size = Group.1))
+  geom_point(data = wildschwein, aes(E.y, N.y, color = TierName, size = Dauer.y))
 
 ggplot() +
   geom_sf(data=Feldaufnahmen, aes())+
-  geom_point(data = wildschwein, aes(E.y, N.y, color = Frucht, size = Group.1))
+  geom_point(data = wildschwein, aes(E.y, N.y, color = Frucht, size = Dauer.y))
 
 #Aufteilen nach Jahreszeit
 wildschwein$DatetimeUTC<-as.POSIXct(as.character(wildschwein$DatetimeUTC), format = "%Y-%m-%d %H:%M:%OS",tz = "UTC")
@@ -164,11 +160,12 @@ wildschwein$Jahreszeit[wildschwein$Monat == "11"] <- "Herbst"
 wildschwein$Jahreszeit[wildschwein$Monat == "12"] <- "Winter"
 wildschwein$Jahreszeit[wildschwein$Monat == "1"] <- "Winter"
 wildschwein$Jahreszeit[wildschwein$Monat == "2"] <- "Winter"
+head(wildschwein)
 
 #Anteil an Fl?chen
 wildschwein$Anteil <- 1
-wildschwein_anteil<- aggregate(wildschwein[, c(17)], list(wildschwein$Frucht), sum)
-wildschwein_anteil_jahreszeit<- aggregate(wildschwein[, c(17)], list(wildschwein$Frucht, wildschwein$Jahreszeit), sum)
+wildschwein_anteil<- aggregate(wildschwein[, c(16)], list(wildschwein$Frucht), sum)
+wildschwein_anteil_jahreszeit<- aggregate(wildschwein[, c(16)], list(wildschwein$Frucht, wildschwein$Jahreszeit), sum)
 
 wildschwein_anteil_fruehling<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Fruehling")
 wildschwein_anteil_sommer<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Sommer")
@@ -182,16 +179,16 @@ barplot(Anteil~Group.1, data = wildschwein_anteil)
 ggplot() +
   geom_bar(data=wildschwein, aes(sum(Anteil),fill = Frucht), position = "fill")+
   facet_grid(~Jahreszeit)+
-  labs(x = "Jahreszeiten", y = "Aufteilung der Ruhepl?tze in die verschiedenen Habitattypen", title = "Ruhepl?tze im Untersuchungsgebiet")+
+  labs(x = "Jahreszeiten", y = "Aufteilung der Ruheplaetze in die verschiedenen Habitattypen", title = "Ruheplaetze im Untersuchungsgebiet")+
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
 
 ggplot() +
   geom_sf(data=Feldaufnahmen_korr, aes(fill = Frucht))+
-  geom_point(data = wildschwein, aes(E.y, N.y, size = Dauer.y.x))+
+  geom_point(data = wildschwein, aes(E.y, N.y, size = Dauer.y))+
   theme(axis.text.x=element_blank(), axis.text.y=element_blank(),
         axis.ticks.x=element_blank(), axis.ticks.y=element_blank())+
-  labs(x = "", y = "", title = "Ruhepl?tze im Untersuchungsgebiet nach Habitattyp", subtitle = "")
+  labs(x = "", y = "", title = "Ruheplaetze im Untersuchungsgebiet nach Habitattyp", subtitle = "")
 
 
 #Kuchendiagramme und Prozentzahlen total und aufgeteilt nach Jahreszeit
@@ -199,35 +196,38 @@ pct <- round(wildschwein_anteil$Anteil/sum(wildschwein_anteil$Anteil)*100)
 lbls <- paste(wildschwein_anteil$Group.1, pct) # add percents to labels
 lbls <- paste(lbls,"%",sep="") # ad % to labels
 pie(wildschwein_anteil$Anteil,labels = lbls, col=rainbow(length(lbls)),
-    main="Aufteilung der Ruhepl?tze nach Vegetationstyp")
+    main="Aufteilung der Ruheplaetze nach Vegetationstyp")
 
 pct <- round(wildschwein_anteil_fruehling$Anteil/sum(wildschwein_anteil_fruehling$Anteil)*100)
 lbls <- paste(wildschwein_anteil_fruehling$Group.1, pct)
 lbls <- paste(lbls,"%",sep="")
 pie(wildschwein_anteil_fruehling$Anteil,labels = lbls, col=rainbow(length(lbls)),
-    main="Aufteilung der Ruhepl?tze nach Vegetationstyp - Fr?hling")
+    main="Aufteilung der Ruheplaetze nach Vegetationstyp - Fruehling")
 
 pct <- round(wildschwein_anteil_sommer$Anteil/sum(wildschwein_anteil_sommer$Anteil)*100)
 lbls <- paste(wildschwein_anteil_sommer$Group.1, pct) 
 lbls <- paste(lbls,"%",sep="") 
 pie(wildschwein_anteil_sommer$Anteil,labels = lbls, col=rainbow(length(lbls)),
-    main="Aufteilung der Ruhepl?tze nach Vegetationstyp - Sommer")
+    main="Aufteilung der Ruheplaetze nach Vegetationstyp - Sommer")
 
 pct <- round(wildschwein_anteil_herbst$Anteil/sum(wildschwein_anteil_herbst$Anteil)*100)
 lbls <- paste(wildschwein_anteil_herbst$Group.1, pct) # add percents to labels
 lbls <- paste(lbls,"%",sep="") # ad % to labels
 pie(wildschwein_anteil_herbst$Anteil,labels = lbls, col=rainbow(length(lbls)),
-    main="Aufteilung der Ruhepl?tze nach Vegetationstyp - Herbst")
+    main="Aufteilung der Ruheplaetze nach Vegetationstyp - Herbst")
 
 pct <- round(wildschwein_anteil_winter$Anteil/sum(wildschwein_anteil_winter$Anteil)*100)
 lbls <- paste(wildschwein_anteil_winter$Group.1, pct) # add percents to labels
 lbls <- paste(lbls,"%",sep="") # ad % to labels
 pie(wildschwein_anteil_winter$Anteil,labels = lbls, col=rainbow(length(lbls)),
-    main="Aufteilung der Ruhepl?tze nach Vegetationstyp - Winter")
+    main="Aufteilung der Ruheplaetze nach Vegetationstyp - Winter")
 
 #___________________________________________________________________________________________________________________
 #Vergleich mit dem von den Wildschweinen genutztem Habitat
 #Feldaufnahmen kategorisieren, NA's entfernen
+wildschwein_BE<- wildschwein_BE%>%
+  st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
+
 wildschwein_all <-st_join(wildschwein_BE,Feldaufnahmen_korr, suffix = c("E", "N"))
 wildschwein_all <-wildschwein_all%>% drop_na(Frucht)
 
@@ -243,9 +243,9 @@ ggplot() +
 #Aufteilen nach Jahreszeit
 wildschwein_all$DatetimeUTC<-as.POSIXct(as.character(wildschwein_all$DatetimeUTC), format = "%Y-%m-%d %H:%M:%OS",tz = "UTC")
 wildschwein_all$Monat <- month(wildschwein_all$DatetimeUTC)
-wildschwein_all$Jahreszeit[wildschwein_all$Monat == "3"] <- "Fr?hling"
-wildschwein_all$Jahreszeit[wildschwein_all$Monat == "4"] <- "Fr?hling"
-wildschwein_all$Jahreszeit[wildschwein_all$Monat == "5"] <- "Fr?hling"
+wildschwein_all$Jahreszeit[wildschwein_all$Monat == "3"] <- "Fruehling"
+wildschwein_all$Jahreszeit[wildschwein_all$Monat == "4"] <- "Fruehling"
+wildschwein_all$Jahreszeit[wildschwein_all$Monat == "5"] <- "Fruehling"
 wildschwein_all$Jahreszeit[wildschwein_all$Monat == "6"] <- "Sommer"
 wildschwein_all$Jahreszeit[wildschwein_all$Monat == "7"] <- "Sommer"
 wildschwein_all$Jahreszeit[wildschwein_all$Monat == "8"] <- "Sommer"
@@ -260,7 +260,7 @@ wildschwein_all$Anteil <- 1
 wildschwein_all_anteil<- aggregate(wildschwein_all[, c(14)], list(wildschwein_all$Frucht), sum)
 wildschwein_all_anteil_jahreszeit<- aggregate(wildschwein_all[, c(14)], list(wildschwein_all$Frucht, wildschwein_all$Jahreszeit), sum)
 
-wildschwein_all_anteil_fruehling<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Fr?hling")
+wildschwein_all_anteil_fruehling<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Fruehling")
 wildschwein_all_anteil_sommer<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Sommer")
 wildschwein_all_anteil_herbst<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Herbst")
 wildschwein_all_anteil_winter<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Winter")
