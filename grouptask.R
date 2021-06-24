@@ -16,8 +16,7 @@ library(ComputationalMovementAnalysisData)
 #install.packages("devtools") 
 devtools::install_github("ComputationalMovementAnalysis/ComputationalMovementAnalysisData")
 
-wildschwein_BE<- wildschwein_BE%>%
-  st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
+wildschwein_BE<- wildschwein_BE
 head(wildschwein_BE)
 
 Feldaufnahmen <- read_sf("Feldaufnahmen_Fanel.gpkg")%>%
@@ -30,7 +29,8 @@ ggplot() +
 
 #_________________________________________________________________________________
 #Trainingsample erstellen. Danach mit dem ganzen Datensatz rechnen
-trainingsample <- wildschwein_BE%>%filter(TierName %in% c("Ueli", "Caroline"), DatetimeUTC > ymd_hms("2016-04-01 00:00:00"), DatetimeUTC < ymd_hms("2016-06-01 00:00:00"))
+trainingsample <- wildschwein_BE%>%filter(TierName %in% c("Ueli", "Caroline"), DatetimeUTC > ymd_hms("2015-04-01 00:00:00"), DatetimeUTC < ymd_hms("2016-06-01 00:00:00"))
+#trainingsample <- wildschwein_BE%>%filter(DatetimeUTC > ymd_hms("2015-01-01 00:00:00"), DatetimeUTC < ymd_hms("2016-01-01 00:00:00"))
 #trainingsample <- wildschwein_BE
 
 #Eucl.Dist moving window
@@ -73,11 +73,12 @@ head(trainingsample_stops)
 
 #länge der trajectn messen
 trainingsample_stops$Dauer <- 1
-trainingsample_stops_dauer<-aggregate(trainingsample_stops[, c(13)], list(trainingsample_stops$segment_id), sum)
+trainingsample_stops_dauer<-aggregate(trainingsample_stops[, c(12)], list(trainingsample_stops$segment_id), sum)
 names(trainingsample_stops_dauer)[1] <- "segment_id"
-trainingsample_stops<-st_join(trainingsample_stops, trainingsample_stops_dauer, by=segment_id)
+trainingsample_stops<-left_join(trainingsample_stops, trainingsample_stops_dauer, by="segment_id")
+trainingsample_stops%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
 
-  
+
 #remove "moving" segments
 trainingsample_filter <- trainingsample_stops %>%
   filter(static)
@@ -89,25 +90,36 @@ trainingsample_filter%>%
 
 #_________________________________________________
 #define segementcenter 
-trainingsample_center<- aggregate(trainingsample_filter[, c(2,5:6,15)], list(trainingsample_filter$segment_id.x), mean)
+trainingsample_center<- aggregate(trainingsample_filter[, c(2,4:6,13)], list(trainingsample_filter$segment_id), mean)
 
 ggplot() +
   geom_point(data = trainingsample_center, aes(E, N, size = Dauer.y))
 
 #join for TierID/TierName
-trainingsample_center_join<-st_join(trainingsample_filter, trainingsample_center, by=segment_id)%>%
-  st_as_sf(coords = c("E.y", "N.y"), crs = 2056, remove = FALSE)
+
+trainingsample_filter%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
+trainingsample_center%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
+
+names(trainingsample_center)[1] <- "segment_id"
+
+trainingsample_center_join<-left_join(trainingsample_filter, trainingsample_center, by="segment_id")#%>%
+  #st_as_sf(coords = c("E.x" "N.x"), crs = 2056, remove = FALSE)
 
 ggplot() +
   geom_sf(data=Feldaufnahmen, aes(fill = Frucht))+
-  geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName.x))
+  geom_point(data = trainingsample_center_join, aes(E.x, N.x, color = TierName.x, size = Dauer.y.x))
 
 
 #_______________________________________________
 #Feldaufnahmen joinen and clean dataframe
-wildschwein <- trainingsample_center_join[,-(8:11),drop=FALSE]
-wildschwein <- wildschwein[,-(9:10),drop=FALSE]
-wildschwein <- wildschwein[,-(5:6),drop=FALSE]
+wildschwein <- trainingsample_center_join[,-(8:10),drop=FALSE]
+head(wildschwein)
+wildschwein <- wildschwein[,-(9),drop=FALSE]
+head(wildschwein)
+wildschwein <- wildschwein[,-(10:11),drop=FALSE]
+head(wildschwein)
+wildschwein <- wildschwein[,-(12),drop=FALSE]
+head(wildschwein)
 
 #Feldaufnahmen kategorisieren, NA's entfernen
 Feldaufnahmen_korr<-Feldaufnahmen%>%
@@ -118,23 +130,25 @@ Feldaufnahmen_korr<-Feldaufnahmen%>%
   mutate(Frucht = str_replace(Frucht, "Buntbrache|Brache", "zus.(Bunt)-Brache"))%>%
   mutate(Frucht = str_replace(Frucht, "Raps", "zus. Raps"))
 
-wildschwein <-st_join(wildschwein,Feldaufnahmen_korr, suffix = c("E.y", "N.y"))
+wildschwein#%>%st_as_sf(coords = c("E.y" "N.y"), crs = 2056, remove = FALSE)
+
+wildschwein <-st_join(wildschwein,Feldaufnahmen_korr, suffix = c("E.x", "N.x"))
 wildschwein <-wildschwein%>% drop_na(Frucht)
 
 ggplot() +
   geom_sf(data=Feldaufnahmen_korr, aes(fill = Frucht))+
-  geom_point(data = wildschwein, aes(E.y, N.y, color = TierName.x))
+  geom_point(data = wildschwein, aes(E.y, N.y, color = TierName.x, size = Dauer.y.x))
 
 ggplot() +
   geom_sf(data=Feldaufnahmen, aes())+
-  geom_point(data = wildschwein, aes(E.y, N.y, color = Frucht))
+  geom_point(data = wildschwein, aes(E.y, N.y, color = Frucht, size = Dauer.y.x))
 
 #Aufteilen nach Jahreszeit
 wildschwein$DatetimeUTC<-as.POSIXct(as.character(wildschwein$DatetimeUTC), format = "%Y-%m-%d %H:%M:%OS",tz = "UTC")
 wildschwein$Monat <- month(wildschwein$DatetimeUTC)
-wildschwein$Jahreszeit[wildschwein$Monat == "3"] <- "Fr?hling"
-wildschwein$Jahreszeit[wildschwein$Monat == "4"] <- "Fr?hling"
-wildschwein$Jahreszeit[wildschwein$Monat == "5"] <- "Fr?hling"
+wildschwein$Jahreszeit[wildschwein$Monat == "3"] <- "Fruehling"
+wildschwein$Jahreszeit[wildschwein$Monat == "4"] <- "Fruehling"
+wildschwein$Jahreszeit[wildschwein$Monat == "5"] <- "Fruehling"
 wildschwein$Jahreszeit[wildschwein$Monat == "6"] <- "Sommer"
 wildschwein$Jahreszeit[wildschwein$Monat == "7"] <- "Sommer"
 wildschwein$Jahreszeit[wildschwein$Monat == "8"] <- "Sommer"
@@ -147,10 +161,10 @@ wildschwein$Jahreszeit[wildschwein$Monat == "2"] <- "Winter"
 
 #Anteil an Fl?chen
 wildschwein$Anteil <- 1
-wildschwein_anteil<- aggregate(wildschwein[, c(14)], list(wildschwein$Frucht), sum)
-wildschwein_anteil_jahreszeit<- aggregate(wildschwein[, c(14)], list(wildschwein$Frucht, wildschwein$Jahreszeit), sum)
+wildschwein_anteil<- aggregate(wildschwein[, c(17)], list(wildschwein$Frucht), sum)
+wildschwein_anteil_jahreszeit<- aggregate(wildschwein[, c(17)], list(wildschwein$Frucht, wildschwein$Jahreszeit), sum)
 
-wildschwein_anteil_fruehling<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Fr?hling")
+wildschwein_anteil_fruehling<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Fruehling")
 wildschwein_anteil_sommer<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Sommer")
 wildschwein_anteil_herbst<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Herbst")
 wildschwein_anteil_winter<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Winter")
@@ -168,7 +182,7 @@ ggplot() +
 
 ggplot() +
   geom_sf(data=Feldaufnahmen_korr, aes(fill = Frucht))+
-  geom_point(data = wildschwein, aes(E.y, N.y))+
+  geom_point(data = wildschwein, aes(E.y, N.y, size = Dauer.y.x))+
   theme(axis.text.x=element_blank(), axis.text.y=element_blank(),
         axis.ticks.x=element_blank(), axis.ticks.y=element_blank())+
   labs(x = "", y = "", title = "Ruhepl?tze im Untersuchungsgebiet nach Habitattyp", subtitle = "")
@@ -282,3 +296,4 @@ ggplot() +
   labs(x = "Jahreszeiten", y = "Aufteilung aller Lokationen in die verschiedenen Habitattypen", title = "Raumnutzung im Untersuchungsgebiet")+
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
+
