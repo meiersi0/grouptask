@@ -17,10 +17,12 @@ library(ComputationalMovementAnalysisData)
 devtools::install_github("ComputationalMovementAnalysis/ComputationalMovementAnalysisData")
 
 wildschwein_BE<- wildschwein_BE
-head(wildschwein_BE)
+#%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
 
 Feldaufnahmen <- read_sf("Feldaufnahmen_Fanel.gpkg")%>%
   st_as_sf(coords = geom, crs = 2056, remove = FALSE)
+
+
 
 #preprocessing
 ggplot() +
@@ -76,7 +78,8 @@ trainingsample_stops$Dauer <- 1
 trainingsample_stops_dauer<-aggregate(trainingsample_stops[, c(12)], list(trainingsample_stops$segment_id), sum)
 names(trainingsample_stops_dauer)[1] <- "segment_id"
 trainingsample_stops<-left_join(trainingsample_stops, trainingsample_stops_dauer, by="segment_id")
-trainingsample_stops%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
+
+#trainingsample_stops%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
 
 
 #remove "moving" segments
@@ -90,36 +93,36 @@ trainingsample_filter%>%
 
 #_________________________________________________
 #define segementcenter 
-trainingsample_center<- aggregate(trainingsample_filter[, c(2,4:6,13)], list(trainingsample_filter$segment_id), mean)
-
-ggplot() +
-  geom_point(data = trainingsample_center, aes(E, N, size = Dauer.y))
+trainingsample_center<- aggregate(trainingsample_filter[, c(5:6)], list(trainingsample_filter$segment_id), mean)
 
 #join for TierID/TierName
-
-trainingsample_filter%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
-trainingsample_center%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
+#trainingsample_filter%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
+#trainingsample_center%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
 
 names(trainingsample_center)[1] <- "segment_id"
 
-trainingsample_center_join<-left_join(trainingsample_filter, trainingsample_center, by="segment_id")#%>%
-  #st_as_sf(coords = c("E.x" "N.x"), crs = 2056, remove = FALSE)
+trainingsample_center_join<-left_join(trainingsample_filter, trainingsample_center, by="segment_id")
+#%>%st_as_sf(coords = c("E.x" "N.x"), crs = 2056, remove = FALSE)
 
+head(trainingsample_center_join)
 ggplot() +
   geom_sf(data=Feldaufnahmen, aes(fill = Frucht))+
-  geom_point(data = trainingsample_center_join, aes(E.x, N.x, color = TierName.x, size = Dauer.y.x))
+  geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName, size = Dauer.y))
 
 
 #_______________________________________________
 #Feldaufnahmen joinen and clean dataframe
-wildschwein <- trainingsample_center_join[,-(8:10),drop=FALSE]
+wildschwein <- trainingsample_center_join
 head(wildschwein)
-wildschwein <- wildschwein[,-(9),drop=FALSE]
+wildschwein <- wildschwein[,-(3),drop=FALSE]
 head(wildschwein)
-wildschwein <- wildschwein[,-(10:11),drop=FALSE]
+wildschwein <- wildschwein[,-(7),drop=FALSE]
 head(wildschwein)
-wildschwein <- wildschwein[,-(12),drop=FALSE]
+wildschwein <- wildschwein[,-(7:8),drop=FALSE]
 head(wildschwein)
+wildschwein <- wildschwein[,-(8),drop=FALSE]
+head(wildschwein)
+
 
 #Feldaufnahmen kategorisieren, NA's entfernen
 Feldaufnahmen_korr<-Feldaufnahmen%>%
@@ -130,18 +133,21 @@ Feldaufnahmen_korr<-Feldaufnahmen%>%
   mutate(Frucht = str_replace(Frucht, "Buntbrache|Brache", "zus.(Bunt)-Brache"))%>%
   mutate(Frucht = str_replace(Frucht, "Raps", "zus. Raps"))
 
-wildschwein#%>%st_as_sf(coords = c("E.y" "N.y"), crs = 2056, remove = FALSE)
 
-wildschwein <-st_join(wildschwein,Feldaufnahmen_korr, suffix = c("E.x", "N.x"))
+
+
+wildschwein<-wildschwein%>%st_as_sf(coords = c("E.y", "N.y"), crs = 2056, remove = FALSE)
+
+wildschwein <-st_join(wildschwein,Feldaufnahmen_korr, suffix = c("E.y", "N.y"))
 wildschwein <-wildschwein%>% drop_na(Frucht)
 
 ggplot() +
   geom_sf(data=Feldaufnahmen_korr, aes(fill = Frucht))+
-  geom_point(data = wildschwein, aes(E.y, N.y, color = TierName.x, size = Dauer.y.x))
+  geom_point(data = wildschwein, aes(E.y, N.y, color = TierName, size = Group.1))
 
 ggplot() +
   geom_sf(data=Feldaufnahmen, aes())+
-  geom_point(data = wildschwein, aes(E.y, N.y, color = Frucht, size = Dauer.y.x))
+  geom_point(data = wildschwein, aes(E.y, N.y, color = Frucht, size = Group.1))
 
 #Aufteilen nach Jahreszeit
 wildschwein$DatetimeUTC<-as.POSIXct(as.character(wildschwein$DatetimeUTC), format = "%Y-%m-%d %H:%M:%OS",tz = "UTC")
