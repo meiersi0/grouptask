@@ -29,6 +29,16 @@ ggplot() +
   geom_sf(data=Feldaufnahmen, aes(fill = Frucht))+
   geom_point(data = wildschwein_BE, aes(E, N, color = TierName))
 
+
+#Filtern nach 15 min-Messungen
+wildschwein_BE$DatetimeUTC<-as.POSIXct(as.character(wildschwein_BE$DatetimeUTC), format = "%Y-%m-%d %H:%M:%OS",tz = "UTC")
+wildschwein_BE$Minute <- minute(wildschwein_BE$DatetimeUTC)
+wildschwein_BE <- wildschwein_BE%>%filter(Minute == c(00, 15, 30, 45))
+wildschwein_BE <- wildschwein_BE[,-(9),drop=FALSE]
+
+
+
+
 #_________________________________________________________________________________
 #Trainingsample erstellen. Danach mit dem ganzen Datensatz rechnen
 #trainingsample <- wildschwein_BE%>%filter(TierName %in% c("Ueli", "Caroline"), DatetimeUTC > ymd_hms("2015-04-01 00:00:00"), DatetimeUTC < ymd_hms("2016-06-01 00:00:00"))
@@ -103,7 +113,7 @@ trainingsample_center_join<-left_join(trainingsample_filter, trainingsample_cent
 
 head(trainingsample_center_join)
 ggplot() +
-  geom_sf(data=Feldaufnahmen, aes(fill = Frucht))+
+  geom_sf(data = Feldaufnahmen, aes(fill = Frucht))+
   geom_point(data = trainingsample_center_join, aes(E.y, N.y, color = TierName, size = Dauer.y))
 
 
@@ -119,6 +129,8 @@ wildschwein <- wildschwein[,-(7:8),drop=FALSE]
 head(wildschwein)
 wildschwein <- wildschwein[,-(8),drop=FALSE]
 head(wildschwein)
+
+
 
 
 #Feldaufnahmen kategorisieren, NA's entfernen
@@ -176,16 +188,28 @@ barplot(Anteil~Group.1, data = wildschwein_anteil)
 
 #_____________________________________________________________________________
 #Resultate Plots
+
+names(wildschwein)[8] <- "Anzahl_Messungen"
+names(wildschwein)[13] <- "Habitattyp"
+
+
 ggplot() +
-  geom_bar(data=wildschwein, aes(sum(Anteil),fill = Frucht), position = "fill")+
+  geom_bar(data=wildschwein, aes(sum(Anteil),fill = Habitattyp), position = "fill")+
   facet_grid(~Jahreszeit)+
   labs(x = "Jahreszeiten", y = "Aufteilung der Ruheplaetze in die verschiedenen Habitattypen", title = "Ruheplaetze im Untersuchungsgebiet")+
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
 
 ggplot() +
-  geom_sf(data=Feldaufnahmen_korr, aes(fill = Frucht))+
-  geom_point(data = wildschwein, aes(E.y, N.y, size = Dauer.y))+
+  geom_sf(data=Feldaufnahmen_korr, aes(fill = Habitattyp))+
+  geom_point(data = wildschwein, aes(E.y, N.y, size = Anzahl_Messungen))+
+  theme(axis.text.x=element_blank(), axis.text.y=element_blank(),
+        axis.ticks.x=element_blank(), axis.ticks.y=element_blank())+
+  labs(x = "", y = "", title = "Ruheplaetze im Untersuchungsgebiet nach Habitattyp", subtitle = "")
+
+ggplot() +
+  geom_sf(data=Feldaufnahmen, aes())+
+  geom_point(data = wildschwein, aes(E.y, N.y, color = Habitattyp, size = Anzahl_Messungen))+
   theme(axis.text.x=element_blank(), axis.text.y=element_blank(),
         axis.ticks.x=element_blank(), axis.ticks.y=element_blank())+
   labs(x = "", y = "", title = "Ruheplaetze im Untersuchungsgebiet nach Habitattyp", subtitle = "")
@@ -231,13 +255,16 @@ wildschwein_BE<- wildschwein_BE%>%
 wildschwein_all <-st_join(wildschwein_BE,Feldaufnahmen_korr, suffix = c("E", "N"))
 wildschwein_all <-wildschwein_all%>% drop_na(Frucht)
 
+names(wildschwein_all)[11] <- "Habitattyp"
+
+
 ggplot() +
-  geom_sf(data=Feldaufnahmen_korr, aes(fill = Frucht))+
+  geom_sf(data=Feldaufnahmen_korr, aes(fill = Habitattyp))+
   geom_point(data = wildschwein_all, aes(E, N))
 
 ggplot() +
   geom_sf(data=Feldaufnahmen_korr, aes())+
-  geom_point(data = wildschwein_all, aes(E, N, color = Frucht))
+  geom_point(data = wildschwein_all, aes(E, N, color = Habitattyp))
 
 #Anteil an Fl?chen
 #Aufteilen nach Jahreszeit
@@ -270,14 +297,14 @@ barplot(Anteil~Group.1, data = wildschwein_all_anteil)
 
 #Resultate Plots
 ggplot() +
-  geom_bar(data=wildschwein_all, aes(sum(Anteil),fill = Frucht), position = "fill")+
+  geom_bar(data=wildschwein_all, aes(sum(Anteil),fill = Habitattyp), position = "fill")+
   facet_grid(~Jahreszeit)+
   labs(x = "Jahreszeiten", y = "Aufteilung aller Lokationen in die verschiedenen Habitattypen", title = "Raumnutzung im Untersuchungsgebiet")+
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
 
 ggplot() +
-  geom_sf(data=Feldaufnahmen_korr, aes(fill = Frucht))+
+  geom_sf(data=Feldaufnahmen_korr, aes(fill = Habitattyp))+
   geom_point(data = wildschwein_all, aes(E, N))+
   theme(axis.text.x=element_blank(), axis.text.y=element_blank(),
         axis.ticks.x=element_blank(), axis.ticks.y=element_blank())+
