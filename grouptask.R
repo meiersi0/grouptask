@@ -300,15 +300,15 @@ wildschwein_all$Jahreszeit[wildschwein_all$Monat == "1"] <- "Winter"
 wildschwein_all$Jahreszeit[wildschwein_all$Monat == "2"] <- "Winter"
 
 wildschwein_all$Anteil <- 1
-wildschwein_all_anteil<- aggregate(wildschwein_all[, c(14)], list(wildschwein_all$Frucht), sum)
-wildschwein_all_anteil_jahreszeit<- aggregate(wildschwein_all[, c(14)], list(wildschwein_all$Frucht, wildschwein_all$Jahreszeit), sum)
+wildschwein_all_anteil<- aggregate(wildschwein_all[, c(14)], list(wildschwein_all$Habitattyp), sum)
+wildschwein_all_anteil_jahreszeit<- aggregate(wildschwein_all[, c(14)], list(wildschwein_all$Habitattyp, wildschwein_all$Jahreszeit), sum)
 
-wildschwein_all_anteil_fruehling<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Fruehling")
-wildschwein_all_anteil_sommer<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Sommer")
-wildschwein_all_anteil_herbst<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Herbst")
-wildschwein_all_anteil_winter<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Winter")
+wildschwein_all_anteil_fruehling<-wildschwein_all_anteil_jahreszeit%>%filter(Group.2 == "Fruehling")
+wildschwein_all_anteil_sommer<-wildschwein_all_anteil_jahreszeit%>%filter(Group.2 == "Sommer")
+wildschwein_all_anteil_herbst<-wildschwein_all_anteil_jahreszeit%>%filter(Group.2 == "Herbst")
+wildschwein_all_anteil_winter<-wildschwein_all_anteil_jahreszeit%>%filter(Group.2 == "Winter")
 
-barplot(Anteil~Group.1, data = wildschwein_all_anteil)
+barplot(x~Group.1, data = wildschwein_all_anteil)
 
 #Frühling, Sommer, Herbst und Winter in richtiger Rheienfolge
 neworder <- c("Fruehling","Sommer","Herbst", "Winter")
@@ -333,12 +333,39 @@ ggplot() +
   labs(x = "", y = "", title = "Raumnutzung Untersuchungsgebiet nach Habitattyp", subtitle = "")
 
 
+
+
 #Kuchendiagramme und Prozentzahlen
-pct <- round(wildschwein_all_anteil$Anteil/sum(wildschwein_all_anteil$Anteil)*100)
+pct <- round(wildschwein_all_anteil$x/sum(wildschwein_all_anteil$x)*100)
 lbls <- paste(wildschwein_all_anteil$Group.1, pct) # add percents to labels
 lbls <- paste(lbls,"%",sep="") # ad % to labels
-pie(wildschwein_all_anteil$Anteil,labels = lbls, col=rainbow(length(lbls)),
+pie(wildschwein_all_anteil$x,labels = lbls, col=rainbow(length(lbls)),
     main="Aufteilung der aller Lokationen nach Vegetationstyp")
+
+pct <- round(wildschwein_all_anteil_fruehling$Anteil/sum(wildschwein_all_anteil_fruehling$Anteil)*100)
+lbls <- paste(wildschwein_all_anteil_fruehling$Group.1, pct)
+lbls <- paste(lbls,"%",sep="")
+pie(wildschwein_all_anteil_fruehling$Anteil,labels = lbls, col=rainbow(length(lbls)),
+    main="Aufteilung der Ruheplaetze nach Vegetationstyp - Fruehling")
+
+pct <- round(wildschwein_anteil_sommer$x/sum(wildschwein_anteil_sommer$x)*100)
+lbls <- paste(wildschwein_anteil_sommer$Group.1, pct) 
+lbls <- paste(lbls,"%",sep="") 
+pie(wildschwein_anteil_sommer$x,labels = lbls, col=rainbow(length(lbls)),
+    main="Aufteilung der Ruheplaetze nach Vegetationstyp - Sommer")
+
+pct <- round(wildschwein_all_anteil_herbst$x/sum(wildschwein_all_anteil_herbst$x)*100)
+lbls <- paste(wildschwein_all_anteil_herbst$Group.1, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(wildschwein_all_anteil_herbst$x,labels = lbls, col=rainbow(length(lbls)),
+    main="Aufteilung der Ruheplaetze nach Vegetationstyp - Herbst")
+
+pct <- round(wildschwein_all_anteil_winter$x/sum(wildschwein_all_anteil_winter$x)*100)
+lbls <- paste(wildschwein_all_anteil_winter$Group.1, pct) # add percents to labels
+lbls <- paste(lbls,"%",sep="") # ad % to labels
+pie(wildschwein_all_anteil_winter$x,labels = lbls, col=rainbow(length(lbls)),
+    main="Aufteilung der Ruheplaetze nach Vegetationstyp - Winter")
+
 
 #Vergleich Ruhepl?tze zu gesamter Raumnutzung 
 wildschwein_anteil$Data<-"Ruheplatz"
@@ -351,4 +378,102 @@ ggplot() +
   labs(x = "Jahreszeiten", y = "Aufteilung aller Lokationen in die verschiedenen Habitattypen", title = "Raumnutzung im Untersuchungsgebiet")+
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
+
+
+#___________________________________________________________________________________________________
+#Statistische Tests
+
+#Präferenz von Schilf als Ruheplatz:
+#Anteil Ruhezeit im Feuchtgebiet vs. Anteil Aufenthaltszeit total im Feuchtgebiet
+
+Ruheplatz <- c(76, 39, 82, 91)
+All <- c(48, 39, 53, 70)
+Anteil_Schilf<-data.frame(Ruheplatz,All)
+
+boxplot(Anteil_Schilf$Ruheplatz, Anteil_Schilf$All)
+t.test(Anteil_Schilf$Ruheplatz, Anteil_Schilf$All)
+# --> nicht signifikant
+
+Ruheplatz <- c(15,24,6,9)
+All <- c(29,24,23,21)
+Anteil_Wald<-data.frame(Ruheplatz,All)
+
+boxplot(Anteil_Wald$Ruheplatz, Anteil_Schilf$All)
+t.test(Anteil_Wald$Ruheplatz, Anteil_Schilf$All)
+# --> signifikant
+
+Ruheplatz <- c(9,38,14,0)
+All <- c(23, 37,24,9)
+Anteil_landw<-data.frame(Ruheplatz,All)
+
+boxplot(Anteil_landw$Ruheplatz, Anteil_Schilf$All)
+t.test(Anteil_landw$Ruheplatz, Anteil_Schilf$All)
+# --> signifikant
+
+
+
+#Ruhephase untersuchen zwischen den verschiedenen Habitaten
+
+Schilf<- wildschwein%>%filter(Habitattyp == "Feuchtgebiet")
+Schilf<-Schilf[, 8:9]
+Schilf<-Schilf[!duplicated(Schilf), ]
+Schilf<-Schilf[, 1]
+mean(Schilf)
+Schilf<-Schilf[1:1208]
+
+Chinaschilf<- wildschwein%>%filter(Habitattyp == "Chinaschilf")
+Chinaschilf<-Chinaschilf[, 8:9]
+Chinaschilf<-Chinaschilf[!duplicated(Chinaschilf), ]
+Chinaschilf<-Chinaschilf[, 1]
+mean(Chinaschilf)
+
+Raps<- wildschwein%>%filter(Habitattyp == "zus. Raps")
+Raps<-Raps[, 8:9]
+Raps<-Raps[, 1]
+mean(Raps)
+
+Getreide<- wildschwein%>%filter(Habitattyp == "Getreide")
+Getreide<-Getreide[, 8:9]
+Getreide<-Getreide[, 1]
+mean(Getreide)
+
+Wald<- wildschwein%>%filter(Habitattyp == "Wald")
+Wald<-Wald[, 8:9]
+Wald<-Wald[!duplicated(Wald), ]
+Wald<-Wald[, 1]
+mean(Wald)
+
+Mais<- wildschwein%>%filter(Habitattyp == "Mais")
+Mais<-Mais[, 8:9]
+Mais<-Mais[!duplicated(Mais), ]
+Mais<-Mais[, 1]
+mean(Mais)
+
+Niedere_Kulturen<- wildschwein%>%filter(Habitattyp == "Niedere Kulturen")
+Niedere_Kulturen<-Niedere_Kulturen[, 8:9]
+Niedere_Kulturen<-Niedere_Kulturen[!duplicated(Wald), ]
+Niedere_Kulturen<-Niedere_Kulturen[, 1]
+mean(Niedere_Kulturen)
+
+Sonnenblumen<- wildschwein%>%filter(Habitattyp == "Sonnenblumen")
+Sonnenblumen<-Sonnenblumen[, 8:9]
+Sonnenblumen<-Sonnenblumen[!duplicated(Sonnenblumen), ]
+Sonnenblumen<-Sonnenblumen[, 1]
+mean(Sonnenblumen)
+
+Wiese_Weide<- wildschwein%>%filter(Habitattyp == "Wiese/Weide")
+Wiese_Weide<-Wiese_Weide[, 8:9]
+Wiese_Weide<-Wiese_Weide[!duplicated(Wiese_Weide), ]
+Wiese_Weide<-Wiese_Weide[, 1]
+mean(Wiese_Weide)
+
+#Vergleich Schilf, Wald
+Dauer<-data.frame(Schilf, Wald)
+
+boxplot(Dauer$Schilf, Dauer$Wald)
+t.test(Dauer$Schilf, Dauer$Wald)
+# --> signifikant
+
+
+
 
