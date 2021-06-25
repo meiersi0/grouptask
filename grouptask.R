@@ -95,7 +95,8 @@ trainingsample_filter <- trainingsample_stops %>%
 
 trainingsample_filter%>%
   ggplot()  +
-  geom_point(aes(E, N, color = TierName))
+  geom_point(aes(E, N, color = TierName))+
+  coord_fixed()
 
 
 #_________________________________________________
@@ -186,12 +187,20 @@ wildschwein_anteil_winter<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Wi
 
 barplot(Anteil~Group.1, data = wildschwein_anteil)
 
+
+
 #_____________________________________________________________________________
 #Resultate Plots
 
 names(wildschwein)[8] <- "Anzahl_Messungen"
 names(wildschwein)[13] <- "Habitattyp"
 
+
+#Frühling, Sommer, Herbst und Winter in richtiger Rheienfolge
+neworder <- c("Fruehling","Sommer","Herbst", "Winter")
+library(plyr)  ## or dplyr (transform -> mutate)
+wildschwein <- arrange(transform(wildschwein,
+                                 Jahreszeit=factor(Jahreszeit,levels=neworder)),Jahreszeit)
 
 ggplot() +
   geom_bar(data=wildschwein, aes(sum(Anteil),fill = Habitattyp), position = "fill")+
@@ -200,8 +209,9 @@ ggplot() +
   theme(axis.text.x=element_blank(),
         axis.ticks.x=element_blank())
 
+
 ggplot() +
-  geom_sf(data=Feldaufnahmen_korr, aes(fill = Habitattyp))+
+  geom_sf(data=Feldaufnahmen_korr, aes(fill = Frucht))+
   geom_point(data = wildschwein, aes(E.y, N.y, size = Anzahl_Messungen))+
   theme(axis.text.x=element_blank(), axis.text.y=element_blank(),
         axis.ticks.x=element_blank(), axis.ticks.y=element_blank())+
@@ -245,6 +255,12 @@ lbls <- paste(wildschwein_anteil_winter$Group.1, pct) # add percents to labels
 lbls <- paste(lbls,"%",sep="") # ad % to labels
 pie(wildschwein_anteil_winter$Anteil,labels = lbls, col=rainbow(length(lbls)),
     main="Aufteilung der Ruheplaetze nach Vegetationstyp - Winter")
+
+
+#Durchschnittliche Dauer am Ruheort
+wildschwein_dauer<- aggregate(wildschwein[, c(8)], list(wildschwein$Habitattyp), mean)
+
+
 
 #___________________________________________________________________________________________________________________
 #Vergleich mit dem von den Wildschweinen genutztem Habitat
@@ -293,6 +309,12 @@ wildschwein_all_anteil_herbst<-wildschwein_anteil_jahreszeit%>%filter(Group.2 ==
 wildschwein_all_anteil_winter<-wildschwein_anteil_jahreszeit%>%filter(Group.2 == "Winter")
 
 barplot(Anteil~Group.1, data = wildschwein_all_anteil)
+
+#Frühling, Sommer, Herbst und Winter in richtiger Rheienfolge
+neworder <- c("Fruehling","Sommer","Herbst", "Winter")
+library(plyr)  ## or dplyr (transform -> mutate)
+wildschwein_all <- arrange(transform(wildschwein_all,
+                                 Jahreszeit=factor(Jahreszeit,levels=neworder)),Jahreszeit)
 
 
 #Resultate Plots
