@@ -19,6 +19,7 @@ devtools::install_github("ComputationalMovementAnalysis/ComputationalMovementAna
 wildschwein_BE<- wildschwein_BE
 #%>%st_as_sf(coords = c("E", "N"), crs = 2056, remove = FALSE)
 
+setwd("C:/Users/simon/Desktop/Simon/Simon/MSc/Pattern and Trends/semester_project/grouptask")
 Feldaufnahmen <- read_sf("Feldaufnahmen_Fanel.gpkg")%>%
   st_as_sf(coords = geom, crs = 2056, remove = FALSE)
 
@@ -308,7 +309,7 @@ wildschwein_all_anteil_sommer<-wildschwein_all_anteil_jahreszeit%>%filter(Group.
 wildschwein_all_anteil_herbst<-wildschwein_all_anteil_jahreszeit%>%filter(Group.2 == "Herbst")
 wildschwein_all_anteil_winter<-wildschwein_all_anteil_jahreszeit%>%filter(Group.2 == "Winter")
 
-barplot(x~Group.1, data = wildschwein_all_anteil)
+barplot(Anteil~Group.1, data = wildschwein_all_anteil)
 
 #Frühling, Sommer, Herbst und Winter in richtiger Rheienfolge
 neworder <- c("Fruehling","Sommer","Herbst", "Winter")
